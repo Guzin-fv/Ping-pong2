@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ping Pong</title>
+  <style>
+    body {
+      background-color: black;
+      background-size: cover;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: sans-serif;
+    }
+
+    canvas {
+      border: 5px solid white;
+      margin-top: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    #menu {
+      margin-top: 20px;
+    }
+
+    #placar {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+
+    #mensagem {
+      font-size: 24px;
+      color: yellow;
+      margin-top: 10px;
+    }
+
+    #btnReiniciar {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background-color: #4CAF50;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+
+    #btnReiniciar:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ping Pong</h1>
+
+  <div id="menu">
+    Dificuldade:
+    <select id="dificuldade">
+      <option value="0.05">Fácil</option>
+      <option value="0.1" selected>Médio</option>
+      <option value="0.2">Difícil</option>
+    </select>
+  </div>
+
+  <div id="placar">Jogador: 0 | CPU: 0</div>
+  <button id="btnReiniciar">Reiniciar Jogo</button>
+  <div id="mensagem"></div>
+
+  <canvas id="telaJogo" width="400" height="400">Seu navegador não suporta o canvas.</canvas>
+
+  <audio id="somRebate" src="sonsmusicaFundo.mp3/tennis-the-ball-slips-past.mp3"></audio>
+  <audio id="somPonto" src="sonsmusicaFundo.mp3/applause-sound-effect-240470.mp3"></audio>
+
+  <audio preload="metadata" controls autoplay loop>
+    <source src="sonsmusicaFundo.mp3/sonsmusicaFundo.mp3.mp4" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const tela = document.getElementById("telaJogo");
+    const ctx = tela.getContext("2d");
+
+    const alturaRaquete = 80;
+    const larguraRaquete = 10;
+    const raioBola = 7;
+
+    let jogador1 = tela.height / 2 - alturaRaquete / 2;
+    let cpu = tela.height / 2 - alturaRaquete / 2;
+    let bolaX = tela.width / 2;
+    let bolaY = tela.height / 2;
+    let velocidadeBolaX = 4;
+    let velocidadeBolaY = 4;
+
+    let pontosJogador = 0;
+    let pontosCPU = 0;
+    let dificuldade = 0.1;
+
+    const somRebate = document.getElementById("somRebate");
+    const somPonto = document.getElementById("somPonto");
+    const placar = document.getElementById("placar");
+    const mensagem = document.getElementById("mensagem");
+
+    const imagemFundo = new Image();
+    imagemFundo.src = 'https://media.istockphoto.com/id/953100878/ja/%E3%83%99%E3%82%AF%E3%82%BF%E3%83%BC/%E5%B9%B3%E3%83%94%E3%83%B3%E3%81%AE%E5%8D%93%E7%90%83%E5%8F%B0%E8%A1%8C%E3%83%86%E3%83%B3%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88-%E3%83%99%E3%82%AF%E3%83%88%E3%83%AB%E3%81%A8-ping-pong-%E3%83%95%E3%82%A3%E3%83%BC%E3%83%AB%E3%83%89%E3%81%AE%E5%B9%B3%E9%9D%A2%E5%9B%B3%E3%81%A7%E3%81%99.jpg?s=170667a&w=0&k=20&c=8x8A3vx4W1xRikkyPcaenAgYcmxhI7DpzuDfA09XCWs=';
+
+    document.getElementById("dificuldade").addEventListener("change", (e) => {
+      dificuldade = parseFloat(e.target.value);
+      reiniciarJogo();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      let rect = tela.getBoundingClientRect();
+      jogador1 = e.clientY - rect.top - alturaRaquete / 2;
+      jogador1 = Math.max(0, Math.min(tela.height - alturaRaquete, jogador1));
+    });
+
+    document.getElementById("btnReiniciar").addEventListener("click", () => {
+      reiniciarJogo();
+    });
+
+    function raquete(x, y, largura, altura, cor) {
+      ctx.fillStyle = cor;
+      ctx.fillRect(x, y, largura, altura);
+    }
+
+    function bola(x, y, raio, cor) {
+      ctx.fillStyle = cor;
+      ctx.beginPath();
+      ctx.arc(x, y, raio, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function desenhar() {
+      ctx.drawImage(imagemFundo, 0, 0, tela.width, tela.height);
+      raquete(10, jogador1, larguraRaquete, alturaRaquete, "Blue");
+      raquete(tela.width - 20, cpu, larguraRaquete, alturaRaquete, "Red");
+      bola(bolaX, bolaY, raioBola, "lime");
+    }
+
+    function atualizar() {
+      if (pontosJogador >= 5 || pontosCPU >= 5) return;
+
+      bolaX += velocidadeBolaX;
+      bolaY += velocidadeBolaY;
+
+      if (bolaY + raioBola > tela.height || bolaY - raioBola < 0) {
+        velocidadeBolaY = -velocidadeBolaY;
+      }
+
+      let alvo = bolaY - (cpu + alturaRaquete / 2);
+      cpu += alvo * dificuldade;
+      cpu = Math.max(0, Math.min(tela.height - alturaRaquete, cpu));
+
+      if (
+        bolaX - raioBola < 20 &&
+        bolaY > jogador1 &&
+        bolaY < jogador1 + alturaRaquete
+      ) {
+        velocidadeBolaX = -velocidadeBolaX;
+        somRebate.play();
+      }
+
+      if (
+        bolaX + raioBola > tela.width - 20 &&
+        bolaY > cpu &&
+        bolaY < cpu + alturaRaquete
+      ) {
+        velocidadeBolaX = -velocidadeBolaX;
+        somRebate.play();
+      }
+
+      if (bolaX < 0) {
+        pontosCPU++;
+        somPonto.play();
+        reiniciarBola();
+      } else if (bolaX > tela.width) {
+        pontosJogador++;
+        somPonto.play();
+        reiniciarBola();
+      }
+
+      placar.innerText = `Jogador: ${pontosJogador} | CPU: ${pontosCPU}`;
+
+      if (pontosJogador >= 5) {
+        mensagem.innerText = " Jogador venceu!";
+      } else if (pontosCPU >= 5) {
+        mensagem.innerText = " CPU venceu!";
+      }
+    }
+
+    function reiniciarBola() {
+      bolaX = tela.width / 2;
+      bolaY = tela.height / 2;
+      velocidadeBolaX = -velocidadeBolaX;
+      velocidadeBolaY = 4;
+    }
+
+    function reiniciarJogo() {
+      pontosJogador = 0;
+      pontosCPU = 0;
+      mensagem.innerText = "";
+      reiniciarBola();
+    }
+
+    function loop() {
+      atualizar();
+      desenhar();
+      requestAnimationFrame(loop);
+    }
+
+    imagemFundo.onload = () => {
+      loop();
+    };
+  </script>
+</body>
+</html>
